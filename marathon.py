@@ -215,13 +215,13 @@ class MarathonTaskCollector(Collector):
                 },
                 'metrics': [
                     {
-                        'type': 'counter',
+                        'type': 'gauge',
                         'name': 'marathon.task.start.time.elapsed',
                         'path': 'startedAt',
                         'transformation': time_diff
                      },
                     {
-                        'type': 'counter',
+                        'type': 'gauge',
                         'name': 'marathon.task.staged.time.elapsed',
                         'path': 'stagedAt',
                         'transformation': time_diff
