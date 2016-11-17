@@ -323,7 +323,7 @@ class MarathonAppCollector(Collector):
                 'metrics': [
                     {
                         'type': 'gauge',
-                        'name': 'marathon.app.cpu.allocated.',
+                        'name': 'marathon.app.cpu.allocated',
                         'path': 'cpus'
                      },
                     {
