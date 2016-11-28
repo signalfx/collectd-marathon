@@ -6,6 +6,7 @@ import time
 import urllib2
 
 
+# Helper functions
 def time_diff(start_time, end_time=None):
     """Calculates the difference in seconds between two timestamps"""
     diff = 0.0
@@ -62,6 +63,373 @@ def num_unhealthy_tasks(results):
     return count
 
 
+def version_less_than_or_equal(version, comparator):
+    """Returns True or False if version is less than or equal to comparator"""
+    (v_major, v_minor, v_revision) = version.split('.')
+    (c_major, c_minor, c_revision) = comparator.split('.')
+    response = False
+    if (v_major < c_major) \
+        or (v_major == c_major and v_minor < c_minor) \
+        or (v_major == c_major and v_minor == c_minor and
+            v_revision <= c_revision):
+        response = True
+    return response
+
+
+def version_greater_than_or_equal(version, comparator):
+    """Returns True or False if version is greater than or equal to comparator
+    """
+    (v_major, v_minor, v_revision) = version.split('.')
+    (c_major, c_minor, c_revision) = comparator.split('.')
+    response = False
+    if (v_major > c_major) \
+        or (v_major == c_major and v_minor > c_minor) \
+        or (v_major == c_major and v_minor == c_minor and
+            v_revision >= c_revision):
+        response = True
+    return response
+
+
+class VersionManager():
+    def __init__(self):
+        """Returns a set of dims and metrics for a given type based on marathon
+        version"""
+        self.dims = {
+            'marathon': [
+                {
+                    'name': 'mesos_framework_id',
+                    'path': 'frameworkId',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'api_end_point': 'info',
+                    'api_version': 'v2'
+                },
+                {
+                    'name': 'mesos_framework_name',
+                    'path': 'marathon_config/framework_name',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'api_end_point': 'info',
+                    'api_version': 'v2'
+                }
+            ],
+            'metric': [],
+            'app': [
+                {
+                    'name': 'mesos_task_name',
+                    'path': 'id',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'api_end_point': 'apps',
+                    'api_version': 'v2'
+                },
+                {
+                    'name': 'container_type',
+                    'path': 'container/type',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'api_end_point': 'apps',
+                    'api_version': 'v2'
+                },
+                {
+                    'name': 'container_image',
+                    'path': 'container/docker/image',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'api_end_point': 'apps',
+                    'api_version': 'v2'
+                },
+                {
+                    'name': 'container_network',
+                    'path': 'container/docker/host',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'api_end_point': 'apps',
+                    'api_version': 'v2'
+                }
+            ],
+            'queue':  [
+                {
+                    'name': 'mesos_task_name',
+                    'path': 'id',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'api_end_point': 'apps',
+                    'api_version': 'v2'
+                },
+                {
+                    'name': 'container_type',
+                    'path': 'container/type',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'api_end_point': 'apps',
+                    'api_version': 'v2'
+                },
+                {
+                    'name': 'container_image',
+                    'path': 'container/docker/image',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'api_end_point': 'apps',
+                    'api_version': 'v2'
+                },
+                {
+                    'name': 'container_network',
+                    'path': 'container/docker/host',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'api_end_point': 'apps',
+                    'api_version': 'v2'
+                }
+            ],
+            'task': [
+                {
+                    'name': 'mesos_task_id',
+                    'path': 'id',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'api_end_point': 'tasks',
+                    'api_version': 'v2'
+                },
+                {
+                    'name': 'mesos_agent',
+                    'path': 'slaveId',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'api_end_point': 'tasks',
+                    'api_version': 'v2'
+                },
+                {
+                    'name': 'mesos_task_name',
+                    'path': 'appId',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'api_end_point': 'tasks',
+                    'api_version': 'v2'
+                }
+            ],
+        }
+
+        self.stats = {
+            'metric': [
+                        {
+                            'name': '',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': '',
+                            'api_end_point': 'metrics',
+                            'api_version': '',
+                            'path': ''
+                        }
+            ],
+            'app': [
+                        {
+                            'name': 'marathon.app.cpu.allocated',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'apps',
+                            'api_version': 'v2',
+                            'path': 'cpus'
+                        },
+                        {
+                            'name': 'marathon.app.memory.allocated',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'apps',
+                            'api_version': 'v2',
+                            'path': 'mem'
+                        },
+                        {
+                            'name': 'marathon.app.disk.allocated',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'apps',
+                            'api_version': 'v2',
+                            'path': 'disk'
+                        },
+                        {
+                            'name': 'marathon.app.gpus.allocated',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'apps',
+                            'api_version': 'v2',
+                            'path': 'gpus'
+                        },
+                        {
+                            'name': 'marathon.app.tasks.staged',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'apps',
+                            'api_version': 'v2',
+                            'path': 'tasksStaged'
+                        },
+                        {
+                            'name': 'marathon.app.tasks.running',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'apps',
+                            'api_version': 'v2',
+                            'path': 'tasksRunning'
+                        },
+                        {
+                            'name': 'marathon.app.tasks.unhealthy',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'apps',
+                            'api_version': 'v2',
+                            'path': 'tasksUnhealthy'
+                        },
+                        {
+                            'name': 'marathon.app.instances.total',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'apps',
+                            'api_version': 'v2',
+                            'path': 'instances'
+                        },
+                        {
+                            'name': 'marathon.app.deployments.total',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'apps',
+                            'api_version': 'v2',
+                            'path': 'deployments',
+                            'transformation': lambda x: len(x)
+                        }
+            ],
+            'queue': [
+                {
+                    'name': 'marathon.app.delayed',
+                    'path': 'delay/overdue',
+                    'start': '1.0.0',
+                    'stop': None,
+                    'type': 'gauge',
+                    'api_end_point': 'apps',
+                    'api_version': 'v2',
+                    'transformation': lambda x: 0 if x is None else 1
+                }
+            ],
+            'task': [
+                        {
+                            'name': 'marathon.task.start.time.elapsed',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'tasks',
+                            'api_version': 'v2',
+                            'path': 'startedAt',
+                            'transformation': time_diff
+                        },
+                        {
+                            'name': 'marathon.task.staged.time.elapsed',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'tasks',
+                            'api_version': 'v2',
+                            'path': 'stagedAt',
+                            'transformation': time_diff
+                        },
+                        {
+                            'name': 'marathon.task.healthchecks.passing.total',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'tasks',
+                            'api_version': 'v2',
+                            'path': 'healthCheckResults',
+                            'transformation': num_healthy_tasks
+                        },
+                        {
+                            'name': 'marathon.task.healthchecks.failing.total',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'tasks',
+                            'api_version': 'v2',
+                            'path': 'healthCheckResults',
+                            'transformation': num_unhealthy_tasks
+                        }
+            ]
+        }
+    # response = {
+    #     'tasks': {
+    #         'v2': [
+    #                   {
+    #                     'name': 'marathon.task.healthchecks.failing.total',
+    #                     'start': '1.0.0',
+    #                     'stop': None,
+    #                     'type': 'gauge',
+    #                     'api_end_point': 'tasks',
+    #                     'api_verison': 'v2',
+    #                     'path': 'healthCheckResults',
+    #                     'transformation': num_unhealthy_tasks
+    #                   }
+    #               ]
+    #     }
+    # }
+
+    def get(self, stat_type, version, stats):
+        log.debug("VersionManager.get(): invoked")
+
+        response = {}
+        if stat_type in stats:
+            for stat in stats[stat_type]:
+                # If within start
+                if 'start' in stat and \
+                  version_greater_than_or_equal(version, stat['start']):
+                    # If within stop
+                    if 'stop' in stat and \
+                        ((stat['stop'] is not None and
+                          not version_greater_than_or_equal(version,
+                          stat['stop'])) or stat['stop'] is None):
+                        # if end_point defined
+                        if 'api_end_point' in stat and 'api_version' in stat:
+                            # Create api_end_point in response if not there
+                            if stat['api_end_point'] not in response:
+                                response[stat['api_end_point']] = {}
+                            # Create api_version in response[api_end_point]
+                            if stat['api_version'] not in response[
+                                    stat['api_end_point']]:
+                                response[stat['api_end_point']][
+                                    stat['api_version']] = []
+                            # Assign metric to proper place
+                            response[stat['api_end_point']][
+                                stat['api_version']].append(stat)
+                        else:
+                            # api_end_point or api_version are not defined
+                            log.info(('VersionManager.get() : api_end_point or'
+                                      ' api_version are not defined for : {0}')
+                                     .format(stat))
+                    else:
+                        # metric greater than or equal to stop
+                        log.debug(('VersionManager.get() : stat greater than '
+                                   'or equal to stop defined for : {0}')
+                                  .format(stat))
+                else:
+                    log.debug(('VersionManager.get() : stat greater than '
+                               'or equal to stop defined for : {0}')
+                              .format(stat))
+
+        log.debug("VersionManager.get(): complete")
+        return response
+
+    def get_metrics(self, stat_type, version):
+        return self.get(stat_type, version, self.stats)
+
+    def get_dims(self, dim_type, version):
+        return self.get(dim_type, version, self.dims)
+
+
 class Collector:
     """Collector class responsible for collecting information from a host"""
     def __init__(self, host=None, port=None, dimension_paths=None,
@@ -72,6 +440,7 @@ class Collector:
         self.host = host
         self.port = port
         self.plugin_instance = plugin_instance
+        self.version = "0.0.0"
 
         # Validate the dimension_paths
         if dimension_paths is None:
@@ -94,6 +463,7 @@ class Collector:
         """Makes a request to the specified version and api"""
         log.debug('MarathonCollector.request() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
+
         result = None
 
         try:
@@ -124,32 +494,17 @@ class Collector:
                   .format(self.host,
                           self.port,
                           result))
+
         log.debug('MarathonCollector.request() [{0}:{1}]: complete'
                   .format(self.host, self.port))
         return result
-
-    def process_dimensions(self, input):
-        """Look up a dimensnion in the specified input"""
-        log.debug('MarathonCollector.process_dimensions() [{0}:{1}]: invoked'
-                  .format(self.host, self.port))
-        dimensions = {}
-        for dim, path in self.dimension_paths.iteritems():
-            value = self.dig_it_up(input, path)
-            if value is not None:
-                dimensions[dim] = str(value)
-            else:
-                log.info(('MarathonCollector.process_dimensions() [{0}:{1}]: '
-                          'Failed to look up dimension {2}')
-                         .format(self.host, self.port, dim))
-        log.debug('MarathonCollector.process_dimensions() [{0}:{1}]: complete'
-                  .format(self.host, self.port))
-        return dimensions
 
     def dig_it_up(self, obj, path):
         """Find the specified value in the supplied object using the specified
         path"""
         log.debug('MarathonCollector.dig_it_up() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
+
         result = None
         try:
             if type(path) in (str, unicode):
@@ -161,6 +516,7 @@ class Collector:
                                                 self.port,
                                                 path,
                                                 obj))
+
         log.debug('MarathonCollector.dig_it_up() [{0}:{1}]: complete'
                   .format(self.host, self.port))
         return result
@@ -204,104 +560,75 @@ class MarathonTaskCollector(Collector):
                  plugin_instance="unknown"):
         log.debug('MarathonTaskCollector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
-        versions = {
-            'v2': {
-                'api': 'tasks',
-                'api_verison': 'v2',
-                'dimension_paths': {
-                    'mesos_task_id': 'id',
-                    'mesos_agent_id': 'slaveId',
-                    'mesos_task_name': 'appId'
-                },
-                'metrics': [
-                    {
-                        'type': 'gauge',
-                        'name': 'marathon.task.start.time.elapsed',
-                        'path': 'startedAt',
-                        'transformation': time_diff
-                     },
-                    {
-                        'type': 'gauge',
-                        'name': 'marathon.task.staged.time.elapsed',
-                        'path': 'stagedAt',
-                        'transformation': time_diff
-                     },
-                    {
-                        'type': 'gauge',
-                        'name': 'marathon.task.healthchecks.passing.total',
-                        'path': 'healthCheckResults',
-                        'transformation': num_healthy_tasks
-                    },
-                    {
-                        'type': 'gauge',
-                        'name': 'marathon.task.healthchecks.failing.total',
-                        'path': 'healthCheckResults',
-                        'transformation': num_unhealthy_tasks
-                    }
-                ]
-            }
-        }
-        # Conditionally set the dimensions to collect
-        if version in versions.keys():
-            Collector.__init__(self,
-                               host,
-                               port,
-                               versions[version]['dimension_paths'],
-                               plugin_instance=plugin_instance)
-            self.api = versions[version]['api']
-            self.metrics = versions[version]['metrics']
-        else:
-            Collector.__init__(self,
-                               host,
-                               port,
-                               plugin_instance=plugin_instance)
-        self.version = version
+
+        Collector.__init__(self,
+                           host,
+                           port,
+                           plugin_instance=plugin_instance)
+
         log.debug('MarathonTaskCollector.__init__() [{0}:{1}]: complete'
                   .format(self.host, self.port))
 
+    def update_version(self, version):
+        """Fetches the current marathon instance version"""
+        log.debug('MarathonTaskCollector.update_version() [{0}:{1}]: invoked'
+                  .format(self.host, self.port))
+
+        if version != self.version:
+            log.info(('MarathonTaskCollector.update_version() [{0}{1}]: '
+                      'version updated from {2} to {3}').format(self.host,
+                                                                self.port,
+                                                                self.version,
+                                                                version))
+            self.version = version
+            self.stats = version_manager.get_metrics('task', version)
+            self.dims = version_manager.get_dims('task', version)
+
+        log.debug('MarathonTaskCollector.update_version() [{0}:{1}]: complete'
+                  .format(self.host, self.port))
+
     def read(self, marathon_dimensions):
-        log.debug('MarathonAppCollector.read() [{0}:{1}]: invoked'
-                  .format(self.host, self.port))
-        self._tasks = self.get()
-        for task in self._tasks:
-            start_ts = None
-            dimensions = self.process_dimensions(task)
-            dimensions.update(marathon_dimensions)
-
-            # Patch mesos_task_name (will need to revisit)
-            dimensions['mesos_task_name'] = dimensions['mesos_task_name'][1:]
-
-            for metric in self.metrics:
-                name = metric['name']
-                metric_type = metric['type']
-                value = self.dig_it_up(task, metric['path'])
-                if value is not None:
-                    if 'transformation' in metric.keys() and name == \
-                       'marathon.task.staged.time.elapsed':
-                        value = metric['transformation'](value, start_ts)
-                    elif 'transformation'in metric.keys() and name == \
-                         'marathon.task.start.time.elapsed':
-                        start_ts = value
-                        value = metric['transformation'](value)
-                    elif 'transformation' in metric.keys():
-                        value = metric['transformation'](value)
-                    self.emit(name, dimensions, value, metric_type)
-        log.debug('MarathonAppCollector.read() [{0}:{1}]: complete'
+        log.debug('MarathonTaskCollector.read() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
 
-    def get(self):
-        log.debug('MarathonAppCollector.get() [{0}:{1}]: invoked'
-                  .format(self.host, self.port))
-        result = []
+        for endpoint, api_versions in self.stats.items():
+            for api_version, metrics in api_versions.items():
+                dimension_paths = {}
+                result = self.request(api_version, endpoint)
+                if 'tasks' in result:
+                    result = result['tasks']
+                if endpoint in self.dims and \
+                   api_version in self.dims[endpoint]:
+                    for dimension in self.dims[endpoint][api_version]:
+                        dimension_paths[dimension['name']] = dimension['path']
 
-        try:
-            result = self.request(self.version, self.api)['tasks']
-        except:
-            log.info('MarathonAppCollector.get() [{0}:{1}]: no tasks found'
-                     .format(self.host, self.port))
+                for task in result:
+                    start_ts = None
+                    dimensions = {}
+                    for dim, path in dimension_paths.items():
+                        dimension_value = self.dig_it_up(task, path)
+                        if dimension_value is not None:
+                            dimensions[dim] = dimension_value
+                    # Add marathon_dimensions
+                    dimensions.update(marathon_dimensions)
+                    for metric in metrics:
+                        name = metric['name']
+                        metric_type = metric['type']
+                        value = self.dig_it_up(task, metric['path'])
+                        if value is not None:
+                            if 'transformation' in metric and name == \
+                               'marathon.task.staged.time.elapsed':
+                                value = metric['transformation'](value,
+                                                                 start_ts)
+                            elif 'transformation'in metric.keys() and name == \
+                                 'marathon.task.start.time.elapsed':
+                                start_ts = value
+                                value = metric['transformation'](value)
+                            elif 'transformation' in metric.keys():
+                                value = metric['transformation'](value)
+                            self.emit(name, dimensions, value, metric_type)
 
-        return result
-        log.debug('MarathonAppCollector.get() [{0}:{1}]: complete'
+        log.debug('MarathonTaskCollector.read() [{0}:{1}]: complete'
                   .format(self.host, self.port))
 
 
@@ -310,175 +637,190 @@ class MarathonAppCollector(Collector):
                  plugin_instance="unknown"):
         log.debug('MarathonAppCollector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
-        versions = {
-            'v2': {
-                'api': 'apps',
-                'api_verison': 'v2',
-                'dimension_paths': {
-                    'mesos_task_name': 'id',  # Equivalent to marathon appId
-                    'container_type': 'container/type',
-                    'container_image': 'container/docker/image',
-                    'container_network': 'container/docker/host'
-                },
-                'metrics': [
-                    {
-                        'type': 'gauge',
-                        'name': 'marathon.app.cpu.allocated',
-                        'path': 'cpus'
-                     },
-                    {
-                        'type': 'gauge',
-                        'name': 'marathon.app.memory.allocated',
-                        'path': 'mem'
-                     },
-                    {
-                        'type': 'gauge',
-                        'name': 'marathon.app.disk.allocated',
-                        'path': 'disk'
-                     },
-                    {
-                        'type': 'gauge',
-                        'name': 'marathon.app.gpus.allocated',
-                        'path': 'gpus'
-                     },
-                    {
-                        'type': 'gauge',
-                        'name': 'marathon.app.tasks.staged',
-                        'path': 'tasksStaged'
-                     },
-                    {
-                        'type': 'gauge',
-                        'name': 'marathon.app.tasks.running',
-                        'path': 'tasksRunning'
-                     },
-                    {
-                        'type': 'gauge',
-                        'name': 'marathon.app.tasks.unhealthy',
-                        'path': 'tasksUnhealthy'
-                     },
-                    {
-                        'type': 'gauge',
-                        'name': 'marathon.app.instances.total',
-                        'path': 'instances'
-                    },
-                    {
-                        'type': 'gauge',
-                        'name': 'marathon.app.deployments.total',
-                        'path': 'deployments',
-                        'transformation': lambda x: len(x)
-                     }
-                ]
-            }
-        }
-        if version in versions.keys():
-            Collector.__init__(self,
-                               host,
-                               port,
-                               versions[version]['dimension_paths'],
-                               plugin_instance)
-            self.api = versions[version]['api']
-            self.metrics = versions[version]['metrics']
-        else:
-            Collector.__init__(self,
-                               host,
-                               port,
-                               plugin_instance=plugin_instance)
 
-        self.version = version
+        Collector.__init__(self,
+                           host,
+                           port,
+                           plugin_instance=plugin_instance)
+
         log.debug('MarathonAppCollector.__init__() [{0}:{1}]: complete'
                   .format(self.host, self.port))
 
+    def update_version(self, version):
+        """Fetches the current marathon instance version"""
+        log.debug('MarathonAppCollector.update_version() [{0}:{1}]: invoked'
+                  .format(self.host, self.port))
+
+        if version != self.version:
+            log.info(('MarathonAppCollector.update_version() [{0}{1}]: '
+                      'version updated from {2} to {3}').format(self.host,
+                                                                self.port,
+                                                                self.version,
+                                                                version))
+            self.version = version
+            self.stats = version_manager.get_metrics('app', version)
+            self.dims = version_manager.get_dims('app', version)
+
+        log.debug('MarathonAppCollector.update_version() [{0}:{1}]: completed'
+                  .format(self.host, self.port))
+
     def read(self, marathon_dimensions):
-        self._apps = self.get()
-        for app in self._apps:
-            dimensions = self.process_dimensions(app)
-            dimensions.update(marathon_dimensions)
-
-            # Patch mesos_task_name (will need to revisit)
-            dimensions['mesos_task_name'] = dimensions['mesos_task_name'][1:]
-
-            for metric in self.metrics:
-                name = metric['name']
-                metric_type = metric['type']
-                value = self.dig_it_up(app, metric['path'])
-                if value is not None:
-                    if 'transformation' in metric.keys():
-                        value = metric['transformation'](value)
-                    self.emit(name, dimensions, value, metric_type)
-
-        # For now collect metrics on queued applications here
-        # Should probably move to a separate collector
-        self._queue = self.queue()
-        for app in self._queue:
-            dimensions = self.process_dimensions(app)
-            dimensions.update(marathon_dimensions)
-
-            # Patch mesos_task_name (will need to revisit)
-            dimensions['mesos_task_name'] = dimensions['mesos_task_name'][1:]
-
-            name = 'marathon.app.delayed'
-            metric_type = 'gauge'
-            value = self.dig_it_up(app, 'delay/overdue')
-
-            if value is not None:
-                value = 0
-            else:
-                value = 1
-
-            self.emit(name, dimensions, value, metric_type)
-
-    def get(self):
-        log.debug('MarathonAppCollector.get() [{0}:{1}]: invoked'
+        """read callback"""
+        log.debug('MarathonAppCollector.read() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
-        result = []
+        for endpoint, api_versions in self.stats.items():
+            for api_version, metrics in api_versions.items():
+                dimension_paths = {}
+                result = self.request(api_version, endpoint)
+                if 'apps' in result:
+                    result = result['apps']
+                if endpoint in self.dims \
+                   and api_version in self.dims[endpoint]:
+                    for dimension in self.dims[endpoint][api_version]:
+                        dimension_paths[dimension['name']] = dimension['path']
 
-        try:
-            result = self.request(self.version, self.api)['apps']
-        except:
-            log.info('MarathonAppCollector.get() [{0}:{1}]: no apps found'
-                     .format(self.host, self.port))
-
-        return result
-        log.debug('MarathonAppCollector.get() [{0}:{1}]: complete'
+                for app in result:
+                    dimensions = {}
+                    for dim, path in dimension_paths.items():
+                        dimension_value = self.dig_it_up(app, path)
+                        if dimension_value is not None:
+                            dimensions[dim] = dimension_value
+                    # Add marathon_dimensions
+                    dimensions.update(marathon_dimensions)
+                    if 'mesos_task_name' in dimensions:
+                        # Patch mesos_task_name (will need to revisit)
+                        dimensions['mesos_task_name'] = dimensions[
+                                                        'mesos_task_name'][1:]
+                    for metric in metrics:
+                        name = metric['name']
+                        metric_type = metric['type']
+                        value = self.dig_it_up(app, metric['path'])
+                        if value is not None:
+                            if 'transformation' in metric.keys():
+                                value = metric['transformation'](value)
+                            self.emit(name, dimensions, value, metric_type)
+        log.debug('MarathonAppCollector.read() [{0}:{1}]: complete'
                   .format(self.host, self.port))
 
-    def queue(self):
-        log.debug('MarathonAppCollector.queue() [{0}:{1}]: invoked'
-                  .format(self.host, self.port))
-        result = []
 
-        try:
-            result = self.request(self.version, 'queue')['tasks']
-        except:
-            log.info('MarathonAppCollector.queue() [{0}:{1}]: empty queue'
-                     .format(self.host, self.port))
+class MarathonQueueCollector(Collector):
+    def __init__(self, host=None, port=None, version=None,
+                 plugin_instance="unknown"):
+        log.debug('MarathonQueueCollector.__init__() [{0}:{1}]: invoked'
+                  .format(host, port))
 
-        log.debug('MarathonAppCollector.queue() [{0}:{1}]: complete'
+        Collector.__init__(self,
+                           host,
+                           port,
+                           plugin_instance=plugin_instance)
+
+        log.debug('MarathonQueueCollector.__init__() [{0}:{1}]: complete'
                   .format(self.host, self.port))
-        return result
+
+    def update_version(self, version):
+        """Fetches the current marathon instance version"""
+        log.debug('MarathonQueueCollector.update_version() [{0}:{1}]: invoked'
+                  .format(self.host, self.port))
+        if version != self.version:
+            log.info(('MarathonQueueCollector.update_version() [{0}{1}]: '
+                      'version updated from {2} to {3}').format(self.host,
+                                                                self.port,
+                                                                self.version,
+                                                                version))
+            self.version = version
+            self.stats = version_manager.get_metrics('queue', version)
+            self.dims = version_manager.get_dims('queue', version)
+        log.debug('MarathonQueueCollector.update_version() [{0}:{1}]: complete'
+                  .format(self.host, self.port))
+
+    def read(self, marathon_dimensions):
+        log.debug('MarathonQueueCollector.read() [{0}:{1}]: invoked'
+                  .format(self.host, self.port))
+
+        for endpoint, api_versions in self.stats.items():
+            for api_version, metrics in api_versions.items():
+                dimension_paths = {}
+                result = self.request(api_version, endpoint)
+                if 'queue' in result:
+                    result = result['queue']
+                if endpoint in self.dims and \
+                   api_version in self.dims[endpoint]:
+                    for dimension in self.dims[endpoint][api_version]:
+                        dimension_paths[dimension['name']] = dimension['path']
+
+                for app in result:
+                    dimensions = {}
+                    for dim, path in dimension_paths.items():
+                        dimension_value = self.dig_it_up(app, path)
+                        if dimension_value is not None:
+                            dimensions[dim] = dimension_value
+                    # Add marathon_dimensions
+                    dimensions.update(marathon_dimensions)
+                    if 'mesos_task_name' in dimensions:
+                        # Patch mesos_task_name (will need to revisit)
+                        dimensions['mesos_task_name'] = dimensions[
+                                                        'mesos_task_name'][1:]
+                    for metric in metrics:
+                        name = metric['name']
+                        metric_type = metric['type']
+                        value = self.dig_it_up(app, metric['path'])
+                        try:
+                            if 'transformation' in metric.keys():
+                                value = metric['transformation'](value)
+                        except Exception as e:
+                            log.error(('MarathonQueueCollector.read() '
+                                       '[{0}:{1}]: failed to transform '
+                                       'value: {3} for metric: {4} due to: {5}'
+                                       ).format(self.host, self.port, value,
+                                                name, e))
+                        self.emit(name, dimensions, value, metric_type)
+        log.debug('MarathonQueueCollector.read() [{0}:{1}]: complete'
+                  .format(self.host, self.port))
 
 
 class MarathonMetricsCollector(Collector):
     def __init__(self, host=None, port=None, version=None):
         log.debug('MarathonMetricsCollector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
+
         Collector.__init__(self, host, port)
-        self.version = version
-        self.api = 'metrics'
+
         log.debug('MarathonMetricsCollector.__init__() [{0}:{1}]: complete'
                   .format(self.host, self.port))
+
+    def update_version(self, version):
+        """Fetches the current marathon instance version"""
+        log.debug(('MarathonMetricsCollector.update_version() [{0}:{1}]: '
+                   'invoked').format(self.host, self.port))
+
+        if version != self.version:
+            log.info(('MarathonMetricsCollector.update_version() [{0}{1}]: '
+                      'version updated from {2} to {3}').format(self.host,
+                                                                self.port,
+                                                                self.version,
+                                                                version))
+            self.version = version
+            self.stats = version_manager.get_metrics('metric', version)
+
+        log.debug(('MarathonMetricsCollector.update_version() [{0}:{1}]: '
+                   'complete').format(self.host, self.port))
 
     def read(self, marathon_dimensions):
         log.debug('MarathonMetricsCollector.read() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
-        self._metrics = self.get()
-        if hasattr(self._metrics, 'keys'):
-            if 'gauges' in self._metrics:
-                self.gauges(self._metrics['gauges'], marathon_dimensions)
-            if 'counters' in self._metrics:
-                self.counters(self._metrics['counters'], marathon_dimensions)
-            if 'meters' in self._metrics:
-                self.meters(self._metrics['meters'], marathon_dimensions)
+        result = None
+
+        for endpoint, api_versions in self.stats.items():
+            for api_version, metrics in api_versions.items():
+                result = self.request(api_version, endpoint)
+
+        if hasattr(result, 'keys'):
+            if 'gauges' in result:
+                self.gauges(result['gauges'], marathon_dimensions)
+            if 'counters' in result:
+                self.counters(result['counters'], marathon_dimensions)
+            if 'meters' in result:
+                self.meters(result['meters'], marathon_dimensions)
         else:
             log.debug(('MarathonMetricsCollector.read() [{0}:{1}]: '
                        'Unable to read results').format(self.host,
@@ -490,6 +832,7 @@ class MarathonMetricsCollector(Collector):
     def gauges(self, gauges, dimensions):
         log.debug('MarathonMetricsCollector.gauges() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
+
         for gauge, info in gauges.iteritems():
             try:
                 name = gauge
@@ -499,12 +842,14 @@ class MarathonMetricsCollector(Collector):
             except:
                 log.info('MarathonMetricsCollector.gauges() [{0}:{1}]: '
                          'No gauges found'.format(self.host, self.port))
+
         log.debug('MarathonMetricsCollector.gauges() [{0}:{1}]: complete'
                   .format(self.host, self.port))
 
     def counters(self, counters, dimensions):
         log.debug('MarathonMetricsCollector.counters() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
+
         for counter, info in counters.iteritems():
             try:
                 name = counter
@@ -514,12 +859,14 @@ class MarathonMetricsCollector(Collector):
             except:
                 log.info('MarathonMetricsCollector.counters() [{0}:{1}]: '
                          'No counters found'.format(self.host, self.port))
+
         log.debug('MarathonMetricsCollector.counters() [{0}:{1}]: complete'
                   .format(self.host, self.port))
 
     def meters(self, meters, dimensions):
         log.debug('MarathonMetricsCollector.meters() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
+
         for meter, info in meters.iteritems():
             try:
                 name = meter + '.' + info['units'].replace('/', '.per.')
@@ -529,14 +876,15 @@ class MarathonMetricsCollector(Collector):
             except:
                 log.info('MarathonMetricsCollector.meters() [{0}:{1}]: '
                          'No meters found'.format(self.host, self.port))
+
         log.debug('MarathonMetricsCollector.meters() [{0}:{1}]: complete'
                   .format(self.host, self.port))
 
     def get(self):
         log.debug('MarathonMetricsCollector.get() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
-        result = []
 
+        result = []
         try:
             result = self.request(self.version, self.api)
         except:
@@ -552,52 +900,68 @@ class MarathonCollector(Collector):
     """The main marathon collector which collects information about a marathon
     host.  Includes collectors for metrics, tasks, and apps.
     """
-    def __init__(self, host=None, port=None, version=None):
-        versions = {
-            'v2': {
-                'api': 'info',
-                'dimension_paths': {
-                    'mesos_framework_id': 'frameworkId',
-                    'mesos_framework_name': 'marathon_config/framework_name'
-                }
-            }
-        }
-        if version in versions.keys():
-            Collector.__init__(self,
-                               host,
-                               port,
-                               versions[version]['dimension_paths'])
-            self.api = versions[version]['api']
-        else:
-            Collector.__init__(self, host, port)
-
-        self.version = version
+    def __init__(self, host=None, port=None):
+        # Initialize parent class
+        Collector.__init__(self, host, port)
         # The metrics api endpoint is not versioned
-        self.metrics = MarathonMetricsCollector(host, port, '')
-        self.tasks = MarathonTaskCollector(host, port, version)
-        self.apps = MarathonAppCollector(host, port, version)
+        self.metrics = MarathonMetricsCollector(host, port)
+        self.tasks = MarathonTaskCollector(host, port)
+        self.apps = MarathonAppCollector(host, port)
+        self.queue = MarathonQueueCollector(host, port)
 
     def update_plugin_instance(self, plugin_instance):
         self.plugin_instance = plugin_instance
         self.metrics.plugin_instance = plugin_instance
         self.tasks.plugin_instance = plugin_instance
         self.apps.plugin_instance = plugin_instance
+        self.queue.plugin_instance = plugin_instance
+
+    def update_version(self):
+        """Fetches the current marathon instance version"""
+        api_version = "v2"
+        api = "info"
+        path = 'version'
+        info = self.request(version=api_version, api=api)
+        version = self.dig_it_up(info, path)
+
+        if version != self.version:
+            log.info(('MarathonTaskCollector.update_version() [{0}{1}]: '
+                      'version updated from {2} to {3}').format(self.host,
+                                                                self.port,
+                                                                self.version,
+                                                                version))
+            self.version = version
+            self.dims = version_manager.get_dims('marathon', version)
+            self.metrics.update_version(version)
+            self.tasks.update_version(version)
+            self.apps.update_version(version)
+            self.queue.update_version(version)
 
     def read(self):
         log.debug('MarathonCollector.read() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
 
-        # Get general marathon information
-        self._info = self.request(self.version, self.api)
+        self.update_version()
+        for endpoint, api_versions in self.dims.items():
+            for api_version, metrics in api_versions.items():
+                dimension_paths = {}
+                result = self.request(api_version, endpoint)
+                if endpoint in self.dims and \
+                   api_version in self.dims[endpoint]:
+                    for dimension in self.dims[endpoint][api_version]:
+                        dimension_paths[dimension['name']] = dimension['path']
 
-        # Parse general dimensions
-        self.dimensions = self.process_dimensions(self._info)
+                dimensions = {}
+                for dim, path in dimension_paths.items():
+                    dimension_value = self.dig_it_up(result, path)
+                    if dimension_value is not None:
+                        dimensions[dim] = dimension_value
 
         # Update the plugin instances once we know them
         try:
             plugin_instance = '{0}{1}'.format(
-                                    self.dimensions['mesos_framework_name'],
-                                    self.dimensions['mesos_framework_id'])
+                                    dimensions['mesos_framework_name'],
+                                    dimensions['mesos_framework_id'])
             self.update_plugin_instance(plugin_instance)
 
         except Exception as e:
@@ -605,9 +969,11 @@ class MarathonCollector(Collector):
                        'plugin_instance : {2}').format(self.host,
                                                        self.port,
                                                        e))
-        self.metrics.read(self.dimensions)
-        self.apps.read(self.dimensions)
-        self.tasks.read(self.dimensions)
+        self.metrics.read(dimensions)
+        self.apps.read(dimensions)
+        self.queue.read(dimensions)
+        self.tasks.read(dimensions)
+
         log.debug('MarathonCollector.read() [{0}:{1}]: complete'
                   .format(self.host, self.port))
 
@@ -631,7 +997,7 @@ class MarathonPlugin:
                 if key == 'host':
                     if len(node.values) > 1:
                         host = MarathonCollector(node.values[0],
-                                                 node.values[1], 'v2')
+                                                 node.values[1])
                         self.hosts.append(host)
                 elif key == 'verbose':
                     handle.verbose = str_to_bool(node.values[0])
@@ -800,13 +1166,14 @@ if __name__ == '__main__':
 
     # Instantiate required objects
     handle.verbose = True
+    version_manager = VersionManager()
     collectd = ExecCollectd()
     plugin = MarathonPlugin()
     configs = MockCollectdConfigurations()
 
     # Configurations
     mock_configurations = [
-        {'host': ['192.168.65.111', '2797']},
+        {'host': ['localhost', '8080']},
         {'verbose': ['true']}
     ]
 
@@ -832,7 +1199,7 @@ if __name__ == '__main__':
 else:
     import collectd
 
+    version_manager = VersionManager()
     plugin = MarathonPlugin()
-
     collectd.register_config(plugin.configure_callback)
     collectd.register_init(plugin.init_callback)
