@@ -2,8 +2,10 @@ from calendar import timegm
 import dateutil.parser
 import json
 import logging
+import six
+from six.moves import urllib
+import sys
 import time
-import urllib2
 
 
 # Helper functions
@@ -441,6 +443,7 @@ class Collector:
         self.port = port
         self.plugin_instance = plugin_instance
         self.version = "0.0.0"
+        self.stats = {}
 
         # Validate the dimension_paths
         if dimension_paths is None:
@@ -464,7 +467,7 @@ class Collector:
         log.debug('MarathonCollector.request() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
 
-        result = None
+        result = {}
 
         try:
             if version != '':
@@ -480,8 +483,9 @@ class Collector:
                                api=api)
             log.debug('MarathonCollector.request() [{0}:{1}]: Request URL {2}'
                       .format(self.host, self.port, request_url))
-            result = json.load(urllib2.urlopen(request_url, timeout=5))
-        except urllib2.URLError, e:
+            response = urllib.request.urlopen(request_url, timeout=5)
+            result = json.loads(response.read().decode('utf-8'))
+        except urllib.error.URLError as e:
             log.error(('MarathonCollector.request() [{0}:{1}]: Error '
                        'connecting to {2}').format(self.host,
                                                    self.port,
@@ -507,10 +511,10 @@ class Collector:
 
         result = None
         try:
-            if type(path) in (str, unicode):
+            if isinstance(path, six.string_types):
                 path = path.split('/')
-            result = reduce(lambda x, y: x[y], path, obj)
-        except:
+            result = six.moves.reduce(lambda x, y: x[y], path, obj)
+        except Exception:
             log.debug(('MarathonCollector.dig_it_up() [{0}:{1}]: failed to dig'
                        ' up {2} in {3}').format(self.host,
                                                 self.port,
@@ -833,7 +837,7 @@ class MarathonMetricsCollector(Collector):
         log.debug('MarathonMetricsCollector.gauges() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
 
-        for gauge, info in gauges.iteritems():
+        for gauge, info in six.iteritems(gauges):
             try:
                 name = gauge
                 metric_type = 'gauge'
@@ -850,10 +854,10 @@ class MarathonMetricsCollector(Collector):
         log.debug('MarathonMetricsCollector.counters() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
 
-        for counter, info in counters.iteritems():
+        for counter, info in six.iteritems(counters):
             try:
                 name = counter
-                metric_type = 'counter'
+                metric_type = 'gauge'
                 value = info['count']
                 self.emit(name, dimensions, value, metric_type)
             except:
@@ -867,7 +871,7 @@ class MarathonMetricsCollector(Collector):
         log.debug('MarathonMetricsCollector.meters() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
 
-        for meter, info in meters.iteritems():
+        for meter, info in six.iteritems(meters):
             try:
                 name = meter + '.' + info['units'].replace('/', '.per.')
                 metric_type = 'gauge'
@@ -908,6 +912,7 @@ class MarathonCollector(Collector):
         self.tasks = MarathonTaskCollector(host, port)
         self.apps = MarathonAppCollector(host, port)
         self.queue = MarathonQueueCollector(host, port)
+        self.dims = {}
 
     def update_plugin_instance(self, plugin_instance):
         self.plugin_instance = plugin_instance
@@ -922,10 +927,19 @@ class MarathonCollector(Collector):
         api = "info"
         path = 'version'
         info = self.request(version=api_version, api=api)
-        version = self.dig_it_up(info, path)
+        version = ""
 
-        if version != self.version:
-            log.info(('MarathonTaskCollector.update_version() [{0}{1}]: '
+        try:
+            version = self.dig_it_up(info, path)
+
+        except Exception as e:
+            log.info(('MarathonCollector.update_version() [{0}{1}]: '
+                      'error fetching Marathon version {2}').format(self.host,
+                                                                    self.port,
+                                                                    e))
+
+        if version is not None and version != self.version:
+            log.info(('MarathonCollector.update_version() [{0}{1}]: '
                       'version updated from {2} to {3}').format(self.host,
                                                                 self.port,
                                                                 self.version,
@@ -941,7 +955,10 @@ class MarathonCollector(Collector):
         log.debug('MarathonCollector.read() [{0}:{1}]: invoked'
                   .format(self.host, self.port))
 
+        dimensions = {}
+
         self.update_version()
+
         for endpoint, api_versions in self.dims.items():
             for api_version, metrics in api_versions.items():
                 dimension_paths = {}
@@ -1121,8 +1138,8 @@ if __name__ == '__main__':
             identifier += '/' + self.type
             if getattr(self, 'type_instance', None):
                 identifier += '-' + self.type_instance
-            print 'PUTVAL', identifier, \
-                  ':'.join(map(str, [int(self.time)] + self.values))
+            print ('PUTVAL', identifier,
+                   ':'.join(map(str, [int(self.time)] + self.values)))
 
     class ExecCollectd:
         def Values(self):
@@ -1141,19 +1158,19 @@ if __name__ == '__main__':
             pass
 
         def error(self, msg):
-            print 'ERROR: ', msg
+            print ('ERROR: ', msg)
 
         def warning(self, msg):
-            print 'WARNING:', msg
+            print ('WARNING:', msg)
 
         def notice(self, msg):
-            print 'NOTICE: ', msg
+            print ('NOTICE: ', msg)
 
         def info(self, msg):
-            print 'INFO:', msg
+            print ('INFO:', msg)
 
         def debug(self, msg):
-            print 'DEBUG: ', msg
+            print ('DEBUG: ', msg)
 
     class MockCollectdConfigurations():
         def __init__(self):
@@ -1170,16 +1187,22 @@ if __name__ == '__main__':
     collectd = ExecCollectd()
     plugin = MarathonPlugin()
     configs = MockCollectdConfigurations()
+    host = 'localhost'
+    port = '8080'
+    if len(sys.argv) > 1:
+        host = sys.argv[1]
+    if len(sys.argv) > 2:
+        port = sys.argv[2]
 
     # Configurations
     mock_configurations = [
-        {'host': ['localhost', '8080']},
+        {'host': [host, port]},
         {'verbose': ['true']}
     ]
 
     # Mock collectd configurations
     for conf in mock_configurations:
-        for k, v in conf.iteritems():
+        for k, v in six.iteritems(conf):
             configs.children.append(MockConfiguration(k, v))
 
     # Send mock configurations to configuration callback
