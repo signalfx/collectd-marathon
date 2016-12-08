@@ -137,14 +137,6 @@ class VersionManager():
                     'api_version': 'v2'
                 },
                 {
-                    'name': 'marathon_app_id',
-                    'path': 'id',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'apps',
-                    'api_version': 'v2'
-                },
-                {
                     'name': 'container_type',
                     'path': 'container/type',
                     'start': '1.0.0',
@@ -172,14 +164,6 @@ class VersionManager():
             'queue':  [
                 {
                     'name': 'mesos_task_name',
-                    'path': 'id',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'apps',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'marathon_app_id',
                     'path': 'id',
                     'start': '1.0.0',
                     'stop': None,
@@ -230,14 +214,6 @@ class VersionManager():
                 },
                 {
                     'name': 'mesos_task_name',
-                    'path': 'appId',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'tasks',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'marathon_app_id',
                     'path': 'appId',
                     'start': '1.0.0',
                     'stop': None,
@@ -697,14 +673,6 @@ class MarathonTaskCollector(Collector):
                             dimensions[dim] = dimension_value
                     # Add marathon_dimensions
                     dimensions.update(marathon_dimensions)
-                    if 'mesos_task_name' in dimensions:
-                        # Patch mesos_task_name
-                        dimensions['mesos_task_name'] = dimensions[
-                                                        'mesos_task_name'][1:]
-                    if 'marathon_app_id' in dimensions:
-                        # Patch marathon_app_id
-                        dimensions['marathon_app_id'] = dimensions[
-                                                        'marathon_app_id'][1:]
                     for metric in metrics:
                         name = metric['name']
                         metric_type = metric['type']
@@ -782,13 +750,9 @@ class MarathonAppCollector(Collector):
                     # Add marathon_dimensions
                     dimensions.update(marathon_dimensions)
                     if 'mesos_task_name' in dimensions:
-                        # Patch mesos_task_name
+                        # Patch mesos_task_name (will need to revisit)
                         dimensions['mesos_task_name'] = dimensions[
                                                         'mesos_task_name'][1:]
-                    if 'marathon_app_id' in dimensions:
-                        # Patch marathon_app_id
-                        dimensions['marathon_app_id'] = dimensions[
-                                                        'marathon_app_id'][1:]
                     for metric in metrics:
                         name = metric['name']
                         metric_type = metric['type']
@@ -862,13 +826,9 @@ class MarathonQueueCollector(Collector):
                     # Add marathon_dimensions
                     dimensions.update(marathon_dimensions)
                     if 'mesos_task_name' in dimensions:
-                        # Patch mesos_task_name
+                        # Patch mesos_task_name (will need to revisit)
                         dimensions['mesos_task_name'] = dimensions[
                                                         'mesos_task_name'][1:]
-                    if 'marathon_app_id' in dimensions:
-                        # Patch marathon_app_id
-                        dimensions['marathon_app_id'] = dimensions[
-                                                        'marathon_app_id'][1:]
                     for metric in metrics:
                         name = metric['name']
                         metric_type = metric['type']
