@@ -92,6 +92,17 @@ def version_greater_than_or_equal(version, comparator):
     return response
 
 
+def application_instance_multiplier(value, app, dig_it_up, api_version=None):
+    """Digs up the number of instances of the supplied app,
+    and returns the value multiplied by the number of instances
+    """
+    response = None
+    instances = dig_it_up(app, 'instances')
+    if instances is not None:
+        response = value * instances
+    return response
+
+
 class VersionManager():
     def __init__(self):
         """Returns a set of dims and metrics for a given type based on marathon
@@ -232,7 +243,8 @@ class VersionManager():
                             'type': 'gauge',
                             'api_end_point': 'apps',
                             'api_version': 'v2',
-                            'path': 'cpus'
+                            'path': 'cpus',
+                            'transformation': application_instance_multiplier
                         },
                         {
                             'name': 'marathon.app.memory.allocated',
@@ -241,7 +253,8 @@ class VersionManager():
                             'type': 'gauge',
                             'api_end_point': 'apps',
                             'api_version': 'v2',
-                            'path': 'mem'
+                            'path': 'mem',
+                            'transformation': application_instance_multiplier
                         },
                         {
                             'name': 'marathon.app.disk.allocated',
@@ -250,10 +263,49 @@ class VersionManager():
                             'type': 'gauge',
                             'api_end_point': 'apps',
                             'api_version': 'v2',
-                            'path': 'disk'
+                            'path': 'disk',
+                            'transformation': application_instance_multiplier
                         },
                         {
                             'name': 'marathon.app.gpus.allocated',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'apps',
+                            'api_version': 'v2',
+                            'path': 'gpus',
+                            'transformation': application_instance_multiplier
+                        },
+                                                {
+                            'name': 'marathon.app.cpu.allocated.per.instance',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'apps',
+                            'api_version': 'v2',
+                            'path': 'cpus'
+                        },
+                        {
+                            'name':
+                                'marathon.app.memory.allocated.per.instance',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'apps',
+                            'api_version': 'v2',
+                            'path': 'mem'
+                        },
+                        {
+                            'name': 'marathon.app.disk.allocated.per.instance',
+                            'start': '1.0.0',
+                            'stop': None,
+                            'type': 'gauge',
+                            'api_end_point': 'apps',
+                            'api_version': 'v2',
+                            'path': 'disk'
+                        },
+                        {
+                            'name': 'marathon.app.gpus.allocated.per.instance',
                             'start': '1.0.0',
                             'stop': None,
                             'type': 'gauge',
@@ -541,19 +593,25 @@ class Collector:
                                          v=str(value),
                                          ti=name,
                                          t=t))
-        val = collectd.Values()
-        val.plugin = 'marathon'
-        val.plugin_instance = self.plugin_instance
-        val.plugin_instance += '[{dims}]'.format(dims=self._d(dimensions))
-        val.type = metric_type
-        val.type_instance = name
-        val.time = t
-        val.meta = {'true': 'true'}
-        val.values = [value]
+        if value is not None:
+            val = collectd.Values()
+            val.plugin = 'marathon'
+            val.plugin_instance = self.plugin_instance
+            val.plugin_instance += '[{dims}]'.format(dims=self._d(dimensions))
+            val.type = metric_type
+            val.type_instance = name
+            val.time = t
+            val.meta = {'true': 'true'}
+            val.values = [value]
 
-        log.info('Value to be emitted {0}'.format(str(val)))
+            log.info('Value to be emitted {0}'.format(str(val)))
 
-        val.dispatch()
+            val.dispatch()
+        else:
+            log.error(('MarathonCollector.emit() [{0}:{1}]: Metric {2} was '
+                       'None and will not be emitted').format(self.host,
+                                                              self.port,
+                                                              name))
 
         log.debug('MarathonCollector.emit() [{0}:{1}]: complete'
                   .format(self.host, self.port))
@@ -700,7 +758,14 @@ class MarathonAppCollector(Collector):
                         metric_type = metric['type']
                         value = self.dig_it_up(app, metric['path'])
                         if value is not None:
-                            if 'transformation' in metric.keys():
+                            if 'transformation' in metric.keys() and \
+                              name.endswith('.allocated'):
+                                value = metric['transformation'
+                                               ](value,
+                                                 app,
+                                                 self.dig_it_up,
+                                                 api_version)
+                            elif 'transformation' in metric.keys():
                                 value = metric['transformation'](value)
                             self.emit(name, dimensions, value, metric_type)
         log.debug('MarathonAppCollector.read() [{0}:{1}]: complete'
