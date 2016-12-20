@@ -103,342 +103,365 @@ def application_instance_multiplier(value, app, dig_it_up, api_version=None):
     return response
 
 
+dims = {
+    'marathon': [
+        {
+            'name': 'mesos_framework_id',
+            'path': 'frameworkId',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'info',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'mesos_framework_name',
+            'path': 'marathon_config/framework_name',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'info',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'marathon_framework_id',
+            'path': 'frameworkId',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'info',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'marathon_framework_name',
+            'path': 'marathon_config/framework_name',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'info',
+            'api_version': 'v2'
+        }
+    ],
+    'metric': [],
+    'app': [
+        {
+            'name': 'mesos_task_name',
+            'path': 'id',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'apps',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'marathon_app_id',
+            'path': 'id',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'apps',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'container_type',
+            'path': 'container/type',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'apps',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'container_image',
+            'path': 'container/docker/image',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'apps',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'container_network',
+            'path': 'container/docker/host',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'apps',
+            'api_version': 'v2'
+        }
+    ],
+    'queue':  [
+        {
+            'name': 'mesos_task_name',
+            'path': 'id',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'apps',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'marathon_app_id',
+            'path': 'id',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'apps',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'container_type',
+            'path': 'container/type',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'apps',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'container_image',
+            'path': 'container/docker/image',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'apps',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'container_network',
+            'path': 'container/docker/host',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'apps',
+            'api_version': 'v2'
+        }
+    ],
+    'task': [
+        {
+            'name': 'mesos_task_id',
+            'path': 'id',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'tasks',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'mesos_agent',
+            'path': 'slaveId',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'tasks',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'mesos_task_name',
+            'path': 'appId',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'tasks',
+            'api_version': 'v2'
+        },
+        {
+            'name': 'marathon_app_id',
+            'path': 'appId',
+            'start': '1.0.0',
+            'stop': None,
+            'api_end_point': 'tasks',
+            'api_version': 'v2'
+        }
+    ]
+}
+
+metrics = {
+    'metric': [
+        {
+            'name': '',
+            'start': '1.0.0',
+            'stop': None,
+            'type': '',
+            'api_end_point': 'metrics',
+            'api_version': '',
+            'path': ''
+        }
+    ],
+    'app': [
+        {
+            'name': 'marathon.app.cpu.allocated',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'path': 'cpus',
+            'transformation': application_instance_multiplier
+        },
+        {
+            'name': 'marathon.app.memory.allocated',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'path': 'mem',
+            'transformation': application_instance_multiplier
+        },
+        {
+            'name': 'marathon.app.disk.allocated',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'path': 'disk',
+            'transformation': application_instance_multiplier
+        },
+        {
+            'name': 'marathon.app.gpus.allocated',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'path': 'gpus',
+            'transformation': application_instance_multiplier
+        },
+        {
+            'name': 'marathon.app.cpu.allocated.per.instance',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'path': 'cpus'
+        },
+        {
+            'name':
+                'marathon.app.memory.allocated.per.instance',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'path': 'mem'
+        },
+        {
+            'name': 'marathon.app.disk.allocated.per.instance',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'path': 'disk'
+        },
+        {
+            'name': 'marathon.app.gpus.allocated.per.instance',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'path': 'gpus'
+        },
+        {
+            'name': 'marathon.app.tasks.staged',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'path': 'tasksStaged'
+        },
+        {
+            'name': 'marathon.app.tasks.running',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'path': 'tasksRunning'
+        },
+        {
+            'name': 'marathon.app.tasks.unhealthy',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'path': 'tasksUnhealthy'
+        },
+        {
+            'name': 'marathon.app.instances.total',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'path': 'instances'
+        },
+        {
+            'name': 'marathon.app.deployments.total',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'path': 'deployments',
+            'transformation': lambda x: len(x)
+        }
+    ],
+    'queue': [
+        {
+            'name': 'marathon.app.delayed',
+            'path': 'delay/overdue',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'apps',
+            'api_version': 'v2',
+            'transformation': lambda x: 0 if x is None else 1
+        }
+    ],
+    'task': [
+        {
+            'name': 'marathon.task.start.time.elapsed',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'tasks',
+            'api_version': 'v2',
+            'path': 'startedAt',
+            'transformation': time_diff
+        },
+        {
+            'name': 'marathon.task.staged.time.elapsed',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'tasks',
+            'api_version': 'v2',
+            'path': 'stagedAt',
+            'transformation': time_diff
+        },
+        {
+            'name': 'marathon.task.healthchecks.passing.total',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'tasks',
+            'api_version': 'v2',
+            'path': 'healthCheckResults',
+            'transformation': num_healthy_tasks
+        },
+        {
+            'name': 'marathon.task.healthchecks.failing.total',
+            'start': '1.0.0',
+            'stop': None,
+            'type': 'gauge',
+            'api_end_point': 'tasks',
+            'api_version': 'v2',
+            'path': 'healthCheckResults',
+            'transformation': num_unhealthy_tasks
+        }
+    ]
+}
+
+
 class VersionManager():
-    def __init__(self):
+    def __init__(self, dictionary):
         """Returns a set of dims and metrics for a given type based on marathon
         version"""
-        self.dims = {
-            'marathon': [
-                {
-                    'name': 'mesos_framework_id',
-                    'path': 'frameworkId',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'info',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'mesos_framework_name',
-                    'path': 'marathon_config/framework_name',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'info',
-                    'api_version': 'v2'
-                }
-            ],
-            'metric': [],
-            'app': [
-                {
-                    'name': 'mesos_task_name',
-                    'path': 'id',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'apps',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'marathon_app_id',
-                    'path': 'id',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'apps',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'container_type',
-                    'path': 'container/type',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'apps',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'container_image',
-                    'path': 'container/docker/image',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'apps',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'container_network',
-                    'path': 'container/docker/host',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'apps',
-                    'api_version': 'v2'
-                }
-            ],
-            'queue':  [
-                {
-                    'name': 'mesos_task_name',
-                    'path': 'id',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'apps',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'marathon_app_id',
-                    'path': 'id',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'apps',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'container_type',
-                    'path': 'container/type',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'apps',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'container_image',
-                    'path': 'container/docker/image',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'apps',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'container_network',
-                    'path': 'container/docker/host',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'apps',
-                    'api_version': 'v2'
-                }
-            ],
-            'task': [
-                {
-                    'name': 'mesos_task_id',
-                    'path': 'id',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'tasks',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'mesos_agent',
-                    'path': 'slaveId',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'tasks',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'mesos_task_name',
-                    'path': 'appId',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'tasks',
-                    'api_version': 'v2'
-                },
-                {
-                    'name': 'marathon_app_id',
-                    'path': 'appId',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'api_end_point': 'tasks',
-                    'api_version': 'v2'
-                }
-            ],
-        }
+        self.dictionary = dictionary
 
-        self.stats = {
-            'metric': [
-                        {
-                            'name': '',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': '',
-                            'api_end_point': 'metrics',
-                            'api_version': '',
-                            'path': ''
-                        }
-            ],
-            'app': [
-                        {
-                            'name': 'marathon.app.cpu.allocated',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'apps',
-                            'api_version': 'v2',
-                            'path': 'cpus',
-                            'transformation': application_instance_multiplier
-                        },
-                        {
-                            'name': 'marathon.app.memory.allocated',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'apps',
-                            'api_version': 'v2',
-                            'path': 'mem',
-                            'transformation': application_instance_multiplier
-                        },
-                        {
-                            'name': 'marathon.app.disk.allocated',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'apps',
-                            'api_version': 'v2',
-                            'path': 'disk',
-                            'transformation': application_instance_multiplier
-                        },
-                        {
-                            'name': 'marathon.app.gpus.allocated',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'apps',
-                            'api_version': 'v2',
-                            'path': 'gpus',
-                            'transformation': application_instance_multiplier
-                        },
-                                                {
-                            'name': 'marathon.app.cpu.allocated.per.instance',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'apps',
-                            'api_version': 'v2',
-                            'path': 'cpus'
-                        },
-                        {
-                            'name':
-                                'marathon.app.memory.allocated.per.instance',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'apps',
-                            'api_version': 'v2',
-                            'path': 'mem'
-                        },
-                        {
-                            'name': 'marathon.app.disk.allocated.per.instance',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'apps',
-                            'api_version': 'v2',
-                            'path': 'disk'
-                        },
-                        {
-                            'name': 'marathon.app.gpus.allocated.per.instance',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'apps',
-                            'api_version': 'v2',
-                            'path': 'gpus'
-                        },
-                        {
-                            'name': 'marathon.app.tasks.staged',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'apps',
-                            'api_version': 'v2',
-                            'path': 'tasksStaged'
-                        },
-                        {
-                            'name': 'marathon.app.tasks.running',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'apps',
-                            'api_version': 'v2',
-                            'path': 'tasksRunning'
-                        },
-                        {
-                            'name': 'marathon.app.tasks.unhealthy',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'apps',
-                            'api_version': 'v2',
-                            'path': 'tasksUnhealthy'
-                        },
-                        {
-                            'name': 'marathon.app.instances.total',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'apps',
-                            'api_version': 'v2',
-                            'path': 'instances'
-                        },
-                        {
-                            'name': 'marathon.app.deployments.total',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'apps',
-                            'api_version': 'v2',
-                            'path': 'deployments',
-                            'transformation': lambda x: len(x)
-                        }
-            ],
-            'queue': [
-                {
-                    'name': 'marathon.app.delayed',
-                    'path': 'delay/overdue',
-                    'start': '1.0.0',
-                    'stop': None,
-                    'type': 'gauge',
-                    'api_end_point': 'apps',
-                    'api_version': 'v2',
-                    'transformation': lambda x: 0 if x is None else 1
-                }
-            ],
-            'task': [
-                        {
-                            'name': 'marathon.task.start.time.elapsed',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'tasks',
-                            'api_version': 'v2',
-                            'path': 'startedAt',
-                            'transformation': time_diff
-                        },
-                        {
-                            'name': 'marathon.task.staged.time.elapsed',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'tasks',
-                            'api_version': 'v2',
-                            'path': 'stagedAt',
-                            'transformation': time_diff
-                        },
-                        {
-                            'name': 'marathon.task.healthchecks.passing.total',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'tasks',
-                            'api_version': 'v2',
-                            'path': 'healthCheckResults',
-                            'transformation': num_healthy_tasks
-                        },
-                        {
-                            'name': 'marathon.task.healthchecks.failing.total',
-                            'start': '1.0.0',
-                            'stop': None,
-                            'type': 'gauge',
-                            'api_end_point': 'tasks',
-                            'api_version': 'v2',
-                            'path': 'healthCheckResults',
-                            'transformation': num_unhealthy_tasks
-                        }
-            ]
-        }
+    def get(self, version_type, version, stats=None):
+        log.debug("VersionManager.get(): invoked")
+
     # response = {
     #     'tasks': {
     #         'v2': [
@@ -456,12 +479,9 @@ class VersionManager():
     #     }
     # }
 
-    def get(self, stat_type, version, stats):
-        log.debug("VersionManager.get(): invoked")
-
         response = {}
-        if stat_type in stats:
-            for stat in stats[stat_type]:
+        if version_type in self.dictionary:
+            for stat in self.dictionary[version_type]:
                 # If within start
                 if 'start' in stat and \
                   version_greater_than_or_equal(version, stat['start']):
@@ -500,12 +520,6 @@ class VersionManager():
 
         log.debug("VersionManager.get(): complete")
         return response
-
-    def get_metrics(self, stat_type, version):
-        return self.get(stat_type, version, self.stats)
-
-    def get_dims(self, dim_type, version):
-        return self.get(dim_type, version, self.dims)
 
 
 class Collector:
@@ -667,8 +681,8 @@ class MarathonTaskCollector(Collector):
                                                                 self.version,
                                                                 version))
             self.version = version
-            self.stats = version_manager.get_metrics('task', version)
-            self.dims = version_manager.get_dims('task', version)
+            self.stats = metric_manager.get('task', version)
+            self.dims = dimension_manager.get('task', version)
 
         log.debug('MarathonTaskCollector.update_version() [{0}:{1}]: complete'
                   .format(self.host, self.port))
@@ -754,8 +768,8 @@ class MarathonAppCollector(Collector):
                                                                 self.version,
                                                                 version))
             self.version = version
-            self.stats = version_manager.get_metrics('app', version)
-            self.dims = version_manager.get_dims('app', version)
+            self.stats = metric_manager.get('app', version)
+            self.dims = dimension_manager.get('app', version)
 
         log.debug('MarathonAppCollector.update_version() [{0}:{1}]: completed'
                   .format(self.host, self.port))
@@ -835,8 +849,8 @@ class MarathonQueueCollector(Collector):
                                                                 self.version,
                                                                 version))
             self.version = version
-            self.stats = version_manager.get_metrics('queue', version)
-            self.dims = version_manager.get_dims('queue', version)
+            self.stats = metric_manager.get('queue', version)
+            self.dims = dimension_manager.get('queue', version)
         log.debug('MarathonQueueCollector.update_version() [{0}:{1}]: complete'
                   .format(self.host, self.port))
 
@@ -911,7 +925,7 @@ class MarathonMetricsCollector(Collector):
                                                                 self.version,
                                                                 version))
             self.version = version
-            self.stats = version_manager.get_metrics('metric', version)
+            self.stats = metric_manager.get('metric', version)
 
         log.debug(('MarathonMetricsCollector.update_version() [{0}:{1}]: '
                    'complete').format(self.host, self.port))
@@ -1052,7 +1066,7 @@ class MarathonCollector(Collector):
                                                                 self.version,
                                                                 version))
             self.version = version
-            self.dims = version_manager.get_dims('marathon', version)
+            self.dims = dimension_manager.get('marathon', version)
             self.metrics.update_version(version)
             self.tasks.update_version(version)
             self.apps.update_version(version)
@@ -1083,10 +1097,11 @@ class MarathonCollector(Collector):
 
         # Update the plugin instances once we know them
         try:
-            plugin_instance = '{0}{1}'.format(
+            plugin_instance = '{0}.{1}'.format(
                                     dimensions['mesos_framework_name'],
                                     dimensions['mesos_framework_id'])
             self.update_plugin_instance(plugin_instance)
+            dimensions['marathon_instance'] = plugin_instance
 
         except Exception as e:
             log.error(('MarathonCollector.read() [{0}:{1}]: unable to set '
@@ -1233,7 +1248,6 @@ log.addHandler(handle)
 
 if __name__ == '__main__':
     import os
-    import sys
 
     class ExecCollectdValues:
         def dispatch(self):
@@ -1290,7 +1304,8 @@ if __name__ == '__main__':
 
     # Instantiate required objects
     handle.verbose = True
-    version_manager = VersionManager()
+    metric_manager = VersionManager(metrics)
+    dimension_manager = VersionManager(dims)
     collectd = ExecCollectd()
     plugin = MarathonPlugin()
     configs = MockCollectdConfigurations()
@@ -1329,7 +1344,8 @@ if __name__ == '__main__':
 else:
     import collectd
 
-    version_manager = VersionManager()
+    metric_manager = VersionManager(metrics)
+    dimension_manager = VersionManager(dims)
     plugin = MarathonPlugin()
     collectd.register_config(plugin.configure_callback)
     collectd.register_init(plugin.init_callback)
