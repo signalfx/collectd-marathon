@@ -511,23 +511,25 @@ class VersionManager():
 
 class Collector:
     """Collector class responsible for collecting information from a host"""
-    def __init__(self, host=None, port=None, dimension_paths=None,
+    def __init__(self, host=None, port=None, username=None, password=None,
                  plugin_instance="unknown"):
         log.debug('Collector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
-
         self.host = host
         self.port = port
+        self.username = username
+        self.password = password
         self.plugin_instance = plugin_instance
         self.version = "0.0.0"
         self.stats = {}
-
-        # Validate the dimension_paths
-        if dimension_paths is None:
-            self.dimension_paths = {}
-        else:
-            self.dimension_paths = dimension_paths
-
+        pwd_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+        pwd_mgr.add_password(None,
+                             "http://{host}:{port}"
+                             .format(host=self.host, port=self.port),
+                             self.username,
+                             self.password)
+        handler = urllib.request.HTTPBasicAuthHandler(pwd_mgr)
+        self.opener = urllib.request.build_opener(handler)
         log.debug('Collector.__init__() [{0}:{1}]: complete'
                   .format(self.host, self.port))
 
@@ -560,7 +562,7 @@ class Collector:
                                api=api)
             log.debug('MarathonCollector.request() [{0}:{1}]: Request URL {2}'
                       .format(self.host, self.port, request_url))
-            response = urllib.request.urlopen(request_url, timeout=5)
+            response = self.opener.open(request_url, timeout=5)
             result = json.loads(response.read().decode('utf-8'))
         except urllib.error.URLError as e:
             log.error(('MarathonCollector.request() [{0}:{1}]: Error '
@@ -644,13 +646,15 @@ class Collector:
 
 class MarathonTaskCollector(Collector):
     def __init__(self, host=None, port=None, version=None,
-                 plugin_instance="unknown"):
+                 username=None, password=None, plugin_instance="unknown"):
         log.debug('MarathonTaskCollector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
 
         Collector.__init__(self,
                            host,
                            port,
+                           username=username,
+                           password=password,
                            plugin_instance=plugin_instance)
 
         log.debug('MarathonTaskCollector.__init__() [{0}:{1}]: complete'
@@ -731,13 +735,15 @@ class MarathonTaskCollector(Collector):
 
 class MarathonAppCollector(Collector):
     def __init__(self, host=None, port=None, version=None,
-                 plugin_instance="unknown"):
+                 username=None, password=None, plugin_instance="unknown"):
         log.debug('MarathonAppCollector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
 
         Collector.__init__(self,
                            host,
                            port,
+                           username=username,
+                           password=password,
                            plugin_instance=plugin_instance)
 
         log.debug('MarathonAppCollector.__init__() [{0}:{1}]: complete'
@@ -813,13 +819,15 @@ class MarathonAppCollector(Collector):
 
 class MarathonQueueCollector(Collector):
     def __init__(self, host=None, port=None, version=None,
-                 plugin_instance="unknown"):
+                 username=None, password=None, plugin_instance="unknown"):
         log.debug('MarathonQueueCollector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
 
         Collector.__init__(self,
                            host,
                            port,
+                           username=username,
+                           password=password,
                            plugin_instance=plugin_instance)
 
         log.debug('MarathonQueueCollector.__init__() [{0}:{1}]: complete'
@@ -891,11 +899,13 @@ class MarathonQueueCollector(Collector):
 
 
 class MarathonMetricsCollector(Collector):
-    def __init__(self, host=None, port=None, version=None):
+    def __init__(self, host=None, port=None, version=None, username=None,
+                 password=None):
         log.debug('MarathonMetricsCollector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
 
-        Collector.__init__(self, host, port)
+        Collector.__init__(self, host, port, username=username,
+                           password=password)
 
         log.debug('MarathonMetricsCollector.__init__() [{0}:{1}]: complete'
                   .format(self.host, self.port))
@@ -1012,9 +1022,10 @@ class MarathonCollector(Collector):
     """The main marathon collector which collects information about a marathon
     host.  Includes collectors for metrics, tasks, and apps.
     """
-    def __init__(self, host=None, port=None):
+    def __init__(self, host=None, port=None, username=None, password=None):
         # Initialize parent class
-        Collector.__init__(self, host, port)
+        Collector.__init__(self, host, port, username=username,
+                           password=password)
         # The metrics api endpoint is not versioned
         self.metrics = MarathonMetricsCollector(host, port)
         self.tasks = MarathonTaskCollector(host, port)
@@ -1122,9 +1133,20 @@ class MarathonPlugin:
             try:
                 if key == 'host':
                     if len(node.values) > 1:
-                        host = MarathonCollector(node.values[0],
-                                                 node.values[1])
-                        self.hosts.append(host)
+                        if len(node.values) == 2:
+                            host = MarathonCollector(node.values[0],
+                                                     node.values[1])
+                            self.hosts.append(host)
+                        elif len(node.values) == 4:
+                            host = MarathonCollector(node.values[0],
+                                                     node.values[1],
+                                                     node.values[2],
+                                                     node.values[3])
+                            self.hosts.append(host)
+                        else:
+                            raise Exception("Invalid Host Configuration {0}"
+                                            .format(node.values)
+                                            )
                 elif key == 'verbose':
                     handle.verbose = str_to_bool(node.values[0])
             except Exception as e:
@@ -1298,17 +1320,22 @@ if __name__ == '__main__':
     configs = MockCollectdConfigurations()
     host = 'localhost'
     port = '8080'
+    user = None
+    passwd = None
     if len(sys.argv) > 1:
         host = sys.argv[1]
-    if len(sys.argv) > 2:
+    if len(sys.argv) == 3:
         port = sys.argv[2]
+    if len(sys.argv) == 4:
+        user = sys.argv[3]
+    if len(sys.argv) == 5:
+        passwd = sys.argv[4]
 
     # Configurations
     mock_configurations = [
-        {'host': [host, port]},
+        {'host': [host, port, user, passwd]},
         {'verbose': ['true']}
     ]
-
     # Mock collectd configurations
     for conf in mock_configurations:
         for k, v in six.iteritems(conf):
