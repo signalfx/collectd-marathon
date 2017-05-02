@@ -1139,8 +1139,11 @@ class MarathonPlugin:
                             self.hosts.append(host)
                         elif len(node.values) == 4:
                             # if the username or password are empty strings
-                            # don't use them
-                            if node[2] == "" or node[3] == "":
+                            # or only spaces then don't use them
+                            if node.values[2] is None or \
+                               node.values[3] is None or \
+                               node.values[2].strip(" ") == "" or \
+                               node.values[3].strip(" ") == "":
                                 log.info('MarathonPlugin.configure_callback() '
                                          ': either the username or password is'
                                          ' a blank string so leaving them out')
