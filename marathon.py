@@ -1138,10 +1138,19 @@ class MarathonPlugin:
                                                      node.values[1])
                             self.hosts.append(host)
                         elif len(node.values) == 4:
-                            host = MarathonCollector(node.values[0],
-                                                     node.values[1],
-                                                     node.values[2],
-                                                     node.values[3])
+                            # if the username or password are empty strings
+                            # don't use them
+                            if node[2] == "" or node[3] == "":
+                                log.info('MarathonPlugin.configure_callback() '
+                                         ': either the username or password is'
+                                         ' a blank string so leaving them out')
+                                host = MarathonCollector(node.values[0],
+                                                         node.values[1])
+                            else:
+                                host = MarathonCollector(node.values[0],
+                                                         node.values[1],
+                                                         node.values[2],
+                                                         node.values[3])
                             self.hosts.append(host)
                         else:
                             raise Exception("Invalid Host Configuration {0}"
