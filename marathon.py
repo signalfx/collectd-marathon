@@ -785,7 +785,7 @@ class MarathonAppCollector(Collector):
     def __init__(self, scheme, host=None, port=None, version=None,
                  username=None, password=None,
                  dcos_auth_url=None, plugin_instance="unknown"):
-        log.info('MarathonAppCollector.__init__() [{0}:{1}]: invoked'
+        log.debug('MarathonAppCollector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
 
         Collector.__init__(self,
