@@ -557,7 +557,6 @@ class Collector:
             response = urllib.request.urlopen(req, context=ssl._create_unverified_context())
             result = json.load(response)
             self.opener.addheaders = [('Authorization', ('token=%s' % (str(result['token']))))]
-            collectd.info(str(result['token']))
         except (urllib.error.HTTPError, urllib.error.URLError) as e:
             log.error(('Collector.get_dcos_auth_token() [{0}:{1}]: Error '
                        'connecting to {2}').format(self.host,
@@ -1247,7 +1246,6 @@ class MarathonPlugin:
             except Exception as e:
                 log.error('Failed to load the configuration {0} due to {1}'
                           .format(node.key, e))
-        collectd.info(str(self.hosts))
         log.debug('MarathonPlugin.configure_callback() : compete')
 
     def init_callback(self):
