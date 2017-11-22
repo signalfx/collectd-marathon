@@ -534,6 +534,7 @@ class Collector:
                              self.username,
                              self.password)
         handler = urllib.request.HTTPBasicAuthHandler(pwd_mgr)
+        https_handler = urllib.request.BaseHandler()
         if scheme == 'https':
             https_handler = urllib.request.HTTPSHandler(context=ssl._create_unverified_context())
         self.opener = urllib.request.build_opener(handler, https_handler)
@@ -1224,6 +1225,9 @@ class MarathonPlugin:
                                                              node.values[3],
                                                              node.values[4])
                                 else:
+                                    if node.values[0] != 'https':
+                                        raise Exception("Invalid Host Configuration {0}"
+                                                            .format(node.values))
                                     dcos_auth_url = '{scheme}://{host}/acs/api/v1/auth/login'.format(
                                                    scheme=node.values[0], host=node.values[1])
                                     log.info(('DC/OS auth URL: %s' % (dcos_auth_url)))
@@ -1233,18 +1237,17 @@ class MarathonPlugin:
                                                              node.values[3],
                                                              node.values[4],
                                                              dcos_auth_url)
-
                             self.hosts.append(host)
                         else:
                             raise Exception("Invalid Host Configuration {0}"
-                                            .format(node.values)
-                                            )
+                                            .format(node.values))
 
                 elif key == 'verbose':
                     handle.verbose = str_to_bool(node.values[0])
             except Exception as e:
                 log.error('Failed to load the configuration {0} due to {1}'
                           .format(node.key, e))
+        collectd.info(str(self.hosts))
         log.debug('MarathonPlugin.configure_callback() : compete')
 
     def init_callback(self):
@@ -1410,11 +1413,12 @@ if __name__ == '__main__':
     collectd = ExecCollectd()
     plugin = MarathonPlugin()
     configs = MockCollectdConfigurations()
-    scheme = 'http'
-    host = 'localhost'
-    port = '8080'
-    user = None
-    passwd = None
+    scheme = 'https'
+    host = '10.0.129.78'
+    port = '8443'
+    user = 'sfx-collectd-1'
+    passwd = 'signalfx'
+    dcos_auth = 'true'
     if len(sys.argv) > 1:
         host = sys.argv[1]
     if len(sys.argv) == 3:
@@ -1426,7 +1430,7 @@ if __name__ == '__main__':
 
     # Configurations
     mock_configurations = [
-        {'host': [scheme, host, port, user, passwd]},
+        {'host': [scheme, host, port, user, passwd, dcos_auth]},
         {'verbose': ['true']}
     ]
     # Mock collectd configurations
