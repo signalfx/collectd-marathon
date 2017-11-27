@@ -1,9 +1,12 @@
 from calendar import timegm
+import collections
+import copy
 import dateutil.parser
 import json
 import logging
 import six
 from six.moves import urllib
+import ssl
 import sys
 import time
 
@@ -511,8 +514,8 @@ class VersionManager():
 
 class Collector:
     """Collector class responsible for collecting information from a host"""
-    def __init__(self, host=None, port=None, username=None, password=None,
-                 plugin_instance="unknown"):
+    def __init__(self, scheme, host=None, port=None, username=None, password=None,
+                 dcos_auth_url=None, plugin_instance="unknown"):
         log.debug('Collector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
         self.host = host
@@ -522,16 +525,48 @@ class Collector:
         self.plugin_instance = plugin_instance
         self.version = "0.0.0"
         self.stats = {}
+        self.scheme = scheme
+        self.dcos_auth_url = dcos_auth_url
         pwd_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         pwd_mgr.add_password(None,
-                             "http://{host}:{port}"
-                             .format(host=self.host, port=self.port),
+                             "{scheme}://{host}:{port}"
+                             .format(scheme=self.scheme, host=self.host, port=self.port),
                              self.username,
                              self.password)
         handler = urllib.request.HTTPBasicAuthHandler(pwd_mgr)
-        self.opener = urllib.request.build_opener(handler)
+        https_handler = urllib.request.BaseHandler()
+        if scheme == 'https':
+            https_handler = urllib.request.HTTPSHandler(context=ssl._create_unverified_context())
+        self.opener = urllib.request.build_opener(handler, https_handler)
+        if dcos_auth_url:
+            self.get_dcos_auth_token(dcos_auth_url, username, password)
         log.debug('Collector.__init__() [{0}:{1}]: complete'
                   .format(self.host, self.port))
+
+
+    def get_dcos_auth_token(self, dcos_auth_url, username, password):
+        if not username or not password:
+            log.error('Collector.get_dcos_auth_token() [{0}:{1}]: Username/password for dcos is not \
+                      configured correctly. Cannot refresh dcos auth token.'
+                      .format(self.host, self.port))
+        print(dcos_auth_url)
+        try:
+            headers = {"Content-Type":"application/json"}
+            data = json.dumps({"uid":username,"password":password})
+            req = urllib.request.Request(dcos_auth_url, headers=headers, data=data)
+            response = urllib.request.urlopen(req, context=ssl._create_unverified_context())
+            result = json.load(response)
+            self.opener.addheaders = [('Authorization', ('token=%s' % (str(result['token']))))]
+        except (urllib.error.HTTPError, urllib.error.URLError) as e:
+            log.error(('Collector.get_dcos_auth_token() [{0}:{1}]: Error '
+                       'connecting to {2}').format(self.host,
+                                                   self.port,
+                                                   dcos_auth_url))
+        except Exception as e:
+            log.error(('Collector.get_dcos_auth_token() [{0}:{1}]: Error {2}').format(self.host,
+                                        self.port,
+                                        e))
+
 
     def __repr__(self):
         return str(self.__dict__)
@@ -550,13 +585,15 @@ class Collector:
 
         try:
             if version != '':
-                request_url = 'http://{host}:{port}/{version}/{api}'.format(
+                request_url = '{scheme}://{host}:{port}/{version}/{api}'.format(
+                               scheme=self.scheme,
                                host=self.host,
                                port=str(self.port),
                                version=version,
                                api=api)
             else:
-                request_url = 'http://{host}:{port}/{api}'.format(
+                request_url = '{scheme}://{host}:{port}/{api}'.format(
+                               scheme=self.scheme,
                                host=self.host,
                                port=str(self.port),
                                api=api)
@@ -564,11 +601,19 @@ class Collector:
                       .format(self.host, self.port, request_url))
             response = self.opener.open(request_url, timeout=5)
             result = json.loads(response.read().decode('utf-8'))
-        except urllib.error.URLError as e:
+        except (urllib.error.HTTPError, urllib.error.URLError) as e:
+            if isinstance(e, urllib.error.HTTPError) and e.code == 401:
+                log.info(('MarathonCollector.request() [{0}:{1}]: Refreshing '
+                          'dcos auth token from: {2}').format(self.host,
+                           self.port,
+                           request_url))
+                self.dcos_auth_token = self.get_dcos_auth_token(self.dcos_auth_url,
+                                                                self.username,
+                                                                self.password)
             log.error(('MarathonCollector.request() [{0}:{1}]: Error '
-                       'connecting to {2}').format(self.host,
+                       'connecting to {2}: {3}').format(self.host,
                                                    self.port,
-                                                   request_url))
+                                                   request_url, e))
         except Exception as e:
             log.error('MarathonCollector.request() [{0}:{1}]: Error {2}'
                       .format(self.host, self.port, e))
@@ -645,16 +690,19 @@ class Collector:
 
 
 class MarathonTaskCollector(Collector):
-    def __init__(self, host=None, port=None, version=None,
-                 username=None, password=None, plugin_instance="unknown"):
+    def __init__(self, scheme, host=None, port=None, version=None,
+                 username=None, password=None, dcos_auth_url=None,
+                 plugin_instance="unknown"):
         log.debug('MarathonTaskCollector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
 
         Collector.__init__(self,
+                           scheme,
                            host,
                            port,
                            username=username,
                            password=password,
+                           dcos_auth_url=dcos_auth_url,
                            plugin_instance=plugin_instance)
 
         log.debug('MarathonTaskCollector.__init__() [{0}:{1}]: complete'
@@ -734,19 +782,22 @@ class MarathonTaskCollector(Collector):
 
 
 class MarathonAppCollector(Collector):
-    def __init__(self, host=None, port=None, version=None,
-                 username=None, password=None, plugin_instance="unknown"):
+    def __init__(self, scheme, host=None, port=None, version=None,
+                 username=None, password=None,
+                 dcos_auth_url=None, plugin_instance="unknown"):
         log.debug('MarathonAppCollector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
 
         Collector.__init__(self,
+                           scheme,
                            host,
                            port,
                            username=username,
                            password=password,
+                           dcos_auth_url=dcos_auth_url,
                            plugin_instance=plugin_instance)
 
-        log.debug('MarathonAppCollector.__init__() [{0}:{1}]: complete'
+        log.info('MarathonAppCollector.__init__() [{0}:{1}]: complete'
                   .format(self.host, self.port))
 
     def update_version(self, version):
@@ -818,16 +869,19 @@ class MarathonAppCollector(Collector):
 
 
 class MarathonQueueCollector(Collector):
-    def __init__(self, host=None, port=None, version=None,
-                 username=None, password=None, plugin_instance="unknown"):
+    def __init__(self, scheme, host=None, port=None, version=None,
+                 username=None, password=None,
+                 dcos_auth_url=None, plugin_instance="unknown"):
         log.debug('MarathonQueueCollector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
 
         Collector.__init__(self,
+                           scheme,
                            host,
                            port,
                            username=username,
                            password=password,
+                           dcos_auth_url=dcos_auth_url,
                            plugin_instance=plugin_instance)
 
         log.debug('MarathonQueueCollector.__init__() [{0}:{1}]: complete'
@@ -899,13 +953,13 @@ class MarathonQueueCollector(Collector):
 
 
 class MarathonMetricsCollector(Collector):
-    def __init__(self, host=None, port=None, version=None, username=None,
-                 password=None):
+    def __init__(self, scheme, host=None, port=None, version=None, username=None,
+                 password=None, dcos_auth_url=None):
         log.debug('MarathonMetricsCollector.__init__() [{0}:{1}]: invoked'
                   .format(host, port))
 
-        Collector.__init__(self, host, port, username=username,
-                           password=password)
+        Collector.__init__(self, scheme, host, port, username=username,
+                           password=password, dcos_auth_url=dcos_auth_url)
 
         log.debug('MarathonMetricsCollector.__init__() [{0}:{1}]: complete'
                   .format(self.host, self.port))
@@ -1022,15 +1076,24 @@ class MarathonCollector(Collector):
     """The main marathon collector which collects information about a marathon
     host.  Includes collectors for metrics, tasks, and apps.
     """
-    def __init__(self, host=None, port=None, username=None, password=None):
+    def __init__(self, scheme, host=None, port=None, username=None,
+                 password=None, dcos_auth_url=None):
         # Initialize parent class
-        Collector.__init__(self, host, port, username=username,
-                           password=password)
+        Collector.__init__(self, scheme, host, port, username=username,
+                           password=password, dcos_auth_url=dcos_auth_url)
         # The metrics api endpoint is not versioned
-        self.metrics = MarathonMetricsCollector(host, port)
-        self.tasks = MarathonTaskCollector(host, port)
-        self.apps = MarathonAppCollector(host, port)
-        self.queue = MarathonQueueCollector(host, port)
+        self.metrics = MarathonMetricsCollector(scheme, host, port,
+                                                username=username, password=password,
+                                                dcos_auth_url=self.dcos_auth_url)
+        self.tasks = MarathonTaskCollector(scheme, host, port,
+                                           username=username, password=password,
+                                           dcos_auth_url=self.dcos_auth_url)
+        self.apps = MarathonAppCollector(scheme, host, port,
+                                         username=username, password=password,
+                                         dcos_auth_url=self.dcos_auth_url)
+        self.queue = MarathonQueueCollector(scheme, host, port,
+                                            username=username, password=password,
+                                            dcos_auth_url=self.dcos_auth_url)
         self.dims = {}
 
     def update_plugin_instance(self, plugin_instance):
@@ -1039,6 +1102,8 @@ class MarathonCollector(Collector):
         self.tasks.plugin_instance = plugin_instance
         self.apps.plugin_instance = plugin_instance
         self.queue.plugin_instance = plugin_instance
+        self.dims = {}
+
 
     def update_version(self):
         """Fetches the current marathon instance version"""
@@ -1118,10 +1183,9 @@ class MarathonCollector(Collector):
 class MarathonPlugin:
     """The main plugin class used to configure and orchestrate collectors
     """
-    hosts = []
-
     def __init__(self):
-        pass
+        self.hosts = []
+
 
     def __repr__(self):
         return str(self.__dict__)
@@ -1133,38 +1197,55 @@ class MarathonPlugin:
             try:
                 if key == 'host':
                     if len(node.values) > 1:
-                        if len(node.values) == 2:
+                        if len(node.values) == 3:
                             host = MarathonCollector(node.values[0],
-                                                     node.values[1])
+                                                     node.values[1],
+                                                     node.values[2])
                             self.hosts.append(host)
-                        elif len(node.values) == 4:
+                        elif 5 <= len(node.values) <= 6:
                             # if the username or password are empty strings
                             # or only spaces then don't use them
-                            if node.values[2] is None or \
-                               node.values[3] is None or \
-                               node.values[2].strip(" ") == "" or \
-                               node.values[3].strip(" ") == "":
+                            if node.values[3] is None or \
+                               node.values[4] is None or \
+                               node.values[3].strip(" ") == "" or \
+                               node.values[4].strip(" ") == "":
                                 log.info('MarathonPlugin.configure_callback() '
                                          ': either the username or password is'
                                          ' a blank string so leaving them out')
                                 host = MarathonCollector(node.values[0],
-                                                         node.values[1])
+                                                          node.values[1],
+                                                          node.values[2])
                             else:
-                                host = MarathonCollector(node.values[0],
-                                                         node.values[1],
-                                                         node.values[2],
-                                                         node.values[3])
+                                if (len(node.values) == 5) or (len(node.values) == 6 and \
+                                                                not str_to_bool(node.values[5])):
+                                    host = MarathonCollector(node.values[0],
+                                                             node.values[1],
+                                                             node.values[2],
+                                                             node.values[3],
+                                                             node.values[4])
+                                else:
+                                    if node.values[0] != 'https':
+                                        raise Exception("Invalid Host Configuration {0}"
+                                                            .format(node.values))
+                                    dcos_auth_url = '{scheme}://{host}/acs/api/v1/auth/login'.format(
+                                                   scheme=node.values[0], host=node.values[1])
+                                    log.info(('DC/OS auth URL: %s' % (dcos_auth_url)))
+                                    host = MarathonCollector(node.values[0],
+                                                             node.values[1],
+                                                             node.values[2],
+                                                             node.values[3],
+                                                             node.values[4],
+                                                             dcos_auth_url)
                             self.hosts.append(host)
                         else:
                             raise Exception("Invalid Host Configuration {0}"
-                                            .format(node.values)
-                                            )
+                                            .format(node.values))
+
                 elif key == 'verbose':
                     handle.verbose = str_to_bool(node.values[0])
             except Exception as e:
                 log.error('Failed to load the configuration {0} due to {1}'
                           .format(node.key, e))
-        log.info('MarathonPlugin.hosts = %s' % self.hosts)
         log.debug('MarathonPlugin.configure_callback() : compete')
 
     def init_callback(self):
@@ -1330,10 +1411,12 @@ if __name__ == '__main__':
     collectd = ExecCollectd()
     plugin = MarathonPlugin()
     configs = MockCollectdConfigurations()
-    host = 'localhost'
-    port = '8080'
-    user = None
-    passwd = None
+    scheme = 'https'
+    host = '10.0.129.78'
+    port = '8443'
+    user = 'sfx-collectd-1'
+    passwd = 'signalfx'
+    dcos_auth = 'true'
     if len(sys.argv) > 1:
         host = sys.argv[1]
     if len(sys.argv) == 3:
@@ -1345,7 +1428,7 @@ if __name__ == '__main__':
 
     # Configurations
     mock_configurations = [
-        {'host': [host, port, user, passwd]},
+        {'host': [scheme, host, port, user, passwd, dcos_auth]},
         {'verbose': ['true']}
     ]
     # Mock collectd configurations
