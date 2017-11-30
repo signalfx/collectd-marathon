@@ -1227,7 +1227,7 @@ class MarathonPlugin:
                                     if node.values[0] != 'https':
                                         raise Exception("Invalid Host Configuration {0}"
                                                             .format(node.values))
-                                    dcos_auth_url = '{scheme}://{host}/acs/api/v1/auth/login'.format(
+                                    dcos_auth_url = '{scheme}://leader.mesos/acs/api/v1/auth/login'.format(
                                                    scheme=node.values[0], host=node.values[1])
                                     log.info(('DC/OS auth URL: %s' % (dcos_auth_url)))
                                     host = MarathonCollector(node.values[0],
