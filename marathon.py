@@ -1,6 +1,4 @@
 from calendar import timegm
-import collections
-import copy
 import dateutil.parser
 import json
 import logging
