@@ -1,6 +1,4 @@
 from calendar import timegm
-import collections
-import copy
 import dateutil.parser
 import json
 import logging
@@ -559,9 +557,9 @@ class Collector:
             self.opener.addheaders = [('Authorization', ('token=%s' % (str(result['token']))))]
         except (urllib.error.HTTPError, urllib.error.URLError) as e:
             log.error(('Collector.get_dcos_auth_token() [{0}:{1}]: Error '
-                       'connecting to {2}').format(self.host,
+                       'connecting to {2} ({3})').format(self.host,
                                                    self.port,
-                                                   dcos_auth_url))
+                                                   dcos_auth_url, e))
         except Exception as e:
             log.error(('Collector.get_dcos_auth_token() [{0}:{1}]: Error {2}').format(self.host,
                                         self.port,
@@ -602,7 +600,7 @@ class Collector:
             response = self.opener.open(request_url, timeout=5)
             result = json.loads(response.read().decode('utf-8'))
         except (urllib.error.HTTPError, urllib.error.URLError) as e:
-            if isinstance(e, urllib.error.HTTPError) and e.code == 401:
+            if isinstance(e, urllib.error.HTTPError) and e.code == 401 and self.dcos_auth_url:
                 log.info(('MarathonCollector.request() [{0}:{1}]: Refreshing '
                           'dcos auth token from: {2}').format(self.host,
                            self.port,
@@ -610,10 +608,11 @@ class Collector:
                 self.dcos_auth_token = self.get_dcos_auth_token(self.dcos_auth_url,
                                                                 self.username,
                                                                 self.password)
-            log.error(('MarathonCollector.request() [{0}:{1}]: Error '
-                       'connecting to {2}: {3}').format(self.host,
-                                                   self.port,
-                                                   request_url, e))
+            else:
+                log.error(('MarathonCollector.request() [{0}:{1}]: Error '
+                           'connecting to {2}: {3}').format(self.host,
+                                                       self.port,
+                                                       request_url, e))
         except Exception as e:
             log.error('MarathonCollector.request() [{0}:{1}]: Error {2}'
                       .format(self.host, self.port, e))
@@ -1217,7 +1216,7 @@ class MarathonPlugin:
                                                           node.values[2])
                             else:
                                 if (len(node.values) == 5) or (len(node.values) == 6 and \
-                                                                not str_to_bool(node.values[5])):
+                                                                (node.values[5].strip(" ") == "")):
                                     host = MarathonCollector(node.values[0],
                                                              node.values[1],
                                                              node.values[2],
@@ -1227,15 +1226,13 @@ class MarathonPlugin:
                                     if node.values[0] != 'https':
                                         raise Exception("Invalid Host Configuration {0}"
                                                             .format(node.values))
-                                    dcos_auth_url = '{scheme}://{host}/acs/api/v1/auth/login'.format(
-                                                   scheme=node.values[0], host=node.values[1])
-                                    log.info(('DC/OS auth URL: %s' % (dcos_auth_url)))
+                                    log.info(('DC/OS auth URL: %s' % (node.values[5])))
                                     host = MarathonCollector(node.values[0],
                                                              node.values[1],
                                                              node.values[2],
                                                              node.values[3],
                                                              node.values[4],
-                                                             dcos_auth_url)
+                                                             node.values[5])
                             self.hosts.append(host)
                         else:
                             raise Exception("Invalid Host Configuration {0}"
@@ -1416,7 +1413,7 @@ if __name__ == '__main__':
     port = '8443'
     user = 'sfx-collectd-1'
     passwd = 'signalfx'
-    dcos_auth = 'true'
+    dcos_auth = 'https://leader.mesos/acs/api/v1/auth/login'
     if len(sys.argv) > 1:
         host = sys.argv[1]
     if len(sys.argv) == 3:
